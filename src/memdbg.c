@@ -35,13 +35,13 @@
 #define EXIT_MALLOC_FAILED (-1)
 
 /// @brief Aborts the program with a debug message.
-#define dbg_fail(fmt_msg, ...)                                                 \
-  do {                                                                         \
-    fputs("!! ", stderr);                                                      \
-    fprintf(stderr, (fmt_msg)__VA_OPT__(, ) __VA_ARGS__);                      \
-    putc('\n', stderr);                                                        \
-    abort();                                                                   \
-  } while (0)
+#define dbg_fail(fmt_msg, ...)                                \
+    do {                                                      \
+        fputs("!! ", stderr);                                 \
+        fprintf(stderr, (fmt_msg)__VA_OPT__(, ) __VA_ARGS__); \
+        putc('\n', stderr);                                   \
+        abort();                                              \
+    } while (0)
 
 #ifdef NDEBUG
 
@@ -89,7 +89,7 @@ void *dbg_malloc(char const *file, int line, size_t size) attr_malloc;
 /// @param size in: member size.
 /// @return A pointer to the newly allocated memory region.
 void *dbg_calloc(char const *file, int line, size_t nmemb,
-                 size_t size) attr_malloc;
+    size_t size) attr_malloc;
 
 #endif // NDEBUG
 
@@ -107,25 +107,25 @@ void *dbg_calloc(char const *file, int line, size_t nmemb,
 #endif // MEMDBG_VERBOSE
 
 typedef enum {
-  AM_malloc,
-  AM_calloc,
+    AM_malloc,
+    AM_calloc,
 } AllocationMethod;
 
 typedef enum {
-  AS_freed,
-  AS_allocated,
+    AS_freed,
+    AS_allocated,
 } AllocationStatus;
 
 typedef struct {
-  size_t size;
-  char *comment;
-  AllocationMethod method;
-  AllocationStatus status;
+    size_t size;
+    char *comment;
+    AllocationMethod method;
+    AllocationStatus status;
 } Allocation;
 
 typedef struct {
-  void *key;
-  Allocation value;
+    void *key;
+    Allocation value;
 } AllocationsMapItem;
 
 static AllocationsMapItem *gs_allocations_map;
@@ -133,133 +133,133 @@ static AllocationsMapItem *gs_allocations_map;
 static bool gs_initialized = false;
 
 static void memdbg_exit(void) {
-  // Check that everything has been freed
-  bool foundUnfreedAlloc = false;
-  for (size_t i = 0; i < hmlenu(gs_allocations_map); ++i) {
-    Allocation alloc = gs_allocations_map[i].value;
-    if (alloc.status != AS_freed) {
-      foundUnfreedAlloc = true;
-      fprintf(stderr, "! Allocation %zu unfreed at exit (%s)\n", i,
-              alloc.comment);
+    // Check that everything has been freed
+    bool foundUnfreedAlloc = false;
+    for (size_t i = 0; i < hmlenu(gs_allocations_map); ++i) {
+        Allocation alloc = gs_allocations_map[i].value;
+        if (alloc.status != AS_freed) {
+            foundUnfreedAlloc = true;
+            fprintf(stderr, "! Allocation %zu unfreed at exit (%s)\n", i,
+                alloc.comment);
+        }
     }
-  }
 
-  if (foundUnfreedAlloc) {
-    dbg_fail("Unfreed allocations have been found.");
-  }
+    if (foundUnfreedAlloc) {
+        dbg_fail("Unfreed allocations have been found.");
+    }
 
-  // Cleanup
-  for (size_t i = 0; i < hmlenu(gs_allocations_map); ++i) {
-    free(gs_allocations_map[i].value.comment);
-  }
-  hmfree(gs_allocations_map);
+    // Cleanup
+    for (size_t i = 0; i < hmlenu(gs_allocations_map); ++i) {
+        free(gs_allocations_map[i].value.comment);
+    }
+    hmfree(gs_allocations_map);
 }
 
 static void signalHandler(int sigid) {
-  if (sigid == SIGABRT) {
+    if (sigid == SIGABRT) {
 #ifdef MEMDBG_VERBOSE
-    // Print allocations on abort
-    dbg_print_allocations(stderr);
+        // Print allocations on abort
+        dbg_print_allocations(stderr);
 #endif // MEMDBG_VERBOSE
-  }
+    }
 }
 
 void lazyInit(void) {
-  if (!gs_initialized) {
-    signal(SIGABRT, signalHandler);
-    atexit(memdbg_exit);
-  }
-  gs_initialized = true;
+    if (!gs_initialized) {
+        signal(SIGABRT, signalHandler);
+        atexit(memdbg_exit);
+    }
+    gs_initialized = true;
 }
 
 void *dbg_malloc(verbose char const *file, verbose int line, size_t size) {
-  lazyInit();
-  void *ptr = malloc(size);
+    lazyInit();
+    void *ptr = malloc(size);
 #ifdef MEMDBG_VERBOSE
-  fprintf(stderr, "%s:%d: memdbg: malloc(%zu) -> %p\n", file, line, size, ptr);
+    fprintf(stderr, "%s:%d: memdbg: malloc(%zu) -> %p\n", file, line, size, ptr);
 #endif // MEMDBG_VERBOSE
-  hmput(gs_allocations_map, ptr,
-        ((Allocation){
+    hmput(gs_allocations_map, ptr,
+        ((Allocation) {
             .method = AM_malloc,
             .size = size,
             .status = AS_allocated,
             .comment = NULL,
         }));
-  return ptr;
+    return ptr;
 }
 
 void *dbg_calloc(verbose char const *file, verbose int line, size_t nmemb,
-                 size_t size) {
-  lazyInit();
-  void *ptr = calloc(nmemb, size);
+    size_t size) {
+    lazyInit();
+    void *ptr = calloc(nmemb, size);
 #ifdef MEMDBG_VERBOSE
-  fprintf(stderr, "%s:%d: memdbg: calloc(%zu, %zu) -> %p\n", file, line, nmemb,
-          size, ptr);
+    fprintf(stderr, "%s:%d: memdbg: calloc(%zu, %zu) -> %p\n", file, line, nmemb,
+        size, ptr);
 #endif // MEMDBG_VERBOSE
-  hmput(gs_allocations_map, ptr,
-        ((Allocation){
+    hmput(gs_allocations_map, ptr,
+        ((Allocation) {
             .method = AM_malloc,
             .size = nmemb * size,
             .status = AS_allocated,
             .comment = NULL,
         }));
-  return ptr;
+    return ptr;
 }
 
 void dbg_free(char const *file, int line, void *ptr) {
-  lazyInit();
-  AllocationsMapItem *item = hmgetp_null(gs_allocations_map, ptr);
-  if (item != NULL) {
+    lazyInit();
+    AllocationsMapItem *item = hmgetp_null(gs_allocations_map, ptr);
+    if (item != NULL) {
 #ifdef MEMDBG_VERBOSE
-    fprintf(stderr, "%s:%d: memdbg: free: %s\n", file, line,
+        fprintf(stderr, "%s:%d: memdbg: free: %s\n", file, line,
             item->value.comment);
 #endif // MEMDBG_VERBOSE
-    free(ptr);
-    item->value.status = AS_freed;
-  } else {
-    fprintf(stderr, "%s:%d: memdbg: free(%p)\n", file, line, ptr);
-    dbg_fail("Tried to free an invalid pointer: %p", ptr);
-  }
+        free(ptr);
+        item->value.status = AS_freed;
+    } else {
+        fprintf(stderr, "%s:%d: memdbg: free(%p)\n", file, line, ptr);
+        dbg_fail("Tried to free an invalid pointer: %p", ptr);
+    }
 }
 
 void *check_alloc(void *mallocResult, char const *fmt_allocComment, ...) {
-  lazyInit();
-  va_list args;
-  va_start(args, fmt_allocComment);
+    lazyInit();
+    va_list args;
+    va_start(args, fmt_allocComment);
 
-  if (mallocResult != NULL) {
-    if (gs_initialized) {
-      AllocationsMapItem *item = hmgetp_null(gs_allocations_map, mallocResult);
-      if (item == NULL) {
-        fprintf(stderr, "!! Tried to check an allocation that never occured: ");
-        vfprintf(stderr, fmt_allocComment, args);
-        fprintf(stderr, " (%p)\n", mallocResult);
-        abort();
-      } else {
-        item->value.comment = malloc(bufferSize(fmt_allocComment, args));
-        // reset the arguments after bufferSize consumed them
-        va_end(args);
-        va_start(args, fmt_allocComment);
-        vsprintf(item->value.comment, fmt_allocComment, args);
-      }
+    if (mallocResult != NULL) {
+        if (gs_initialized) {
+            AllocationsMapItem *item = hmgetp_null(gs_allocations_map, mallocResult);
+            if (item == NULL) {
+                fprintf(stderr, "!! Tried to check an allocation that never occured: ");
+                vfprintf(stderr, fmt_allocComment, args);
+                fprintf(stderr, " (%p)\n", mallocResult);
+                abort();
+            } else {
+                item->value.comment = malloc(bufferSize(fmt_allocComment, args));
+                // reset the arguments after bufferSize consumed them
+                va_end(args);
+                va_start(args, fmt_allocComment);
+                vsprintf(item->value.comment, fmt_allocComment, args);
+            }
+        }
+
+        return mallocResult;
     }
 
-    return mallocResult;
-  }
+    fprintf(stderr, "!! Out of memory allocating ");
+    vfprintf(stderr, fmt_allocComment, args);
+    putc('\n', stderr);
 
-  fprintf(stderr, "!! Out of memory allocating ");
-  vfprintf(stderr, fmt_allocComment, args);
-  putc('\n', stderr);
+    va_end(args);
 
-  va_end(args);
+    perform_emergencyMemoryCleanup();
 
-  perform_emergencyMemoryCleanup();
-
-  exit(EXIT_MALLOC_FAILED);
+    exit(EXIT_MALLOC_FAILED);
 }
 
 void dbg_print_allocations(FILE *outStream) {
-  lazyInit();
+    lazyInit();
 #define STR_AS_ALLOCATED "allocated"
 #define STR_AS_FREED "freed"
 
@@ -274,42 +274,42 @@ void dbg_print_allocations(FILE *outStream) {
 #define COL_HEAD_COMMENT "comment"
 
 #define COL_LEN_INDEX (digitCount(hmlenu(gs_allocations_map) - 1, 10))
-#define COL_LEN_STATUS                                                         \
-  ((int)max(sizeof COL_HEAD_STATUS,                                            \
-            max(sizeof STR_AS_FREED, sizeof STR_AS_ALLOCATED)) -               \
-   1)
+#define COL_LEN_STATUS                                      \
+    ((int)max(sizeof COL_HEAD_STATUS,                       \
+         max(sizeof STR_AS_FREED, sizeof STR_AS_ALLOCATED)) \
+        - 1)
 #define COL_LEN_PTR ((int)sizeof(void *) + 4)
-#define COL_LEN_METHOD                                                         \
-  ((int)max(sizeof COL_HEAD_METHOD,                                            \
-            max(sizeof STR_AM_MALLOC, sizeof STR_AM_CALLOC)) -                 \
-   1)
+#define COL_LEN_METHOD                                    \
+    ((int)max(sizeof COL_HEAD_METHOD,                     \
+         max(sizeof STR_AM_MALLOC, sizeof STR_AM_CALLOC)) \
+        - 1)
 #define COL_LEN_SIZE ((int)sizeof COL_HEAD_SIZE - 1)
 
-  // Header
-  fprintf(outStream, "%*s | %*s | %*s | %*s | %*s | %s\n", COL_LEN_INDEX,
-          COL_HEAD_INDEX, COL_LEN_STATUS, COL_HEAD_STATUS, COL_LEN_METHOD,
-          COL_HEAD_METHOD, COL_LEN_SIZE, COL_HEAD_SIZE, COL_LEN_PTR,
-          COL_HEAD_PTR, COL_HEAD_COMMENT);
+    // Header
+    fprintf(outStream, "%*s | %*s | %*s | %*s | %*s | %s\n", COL_LEN_INDEX,
+        COL_HEAD_INDEX, COL_LEN_STATUS, COL_HEAD_STATUS, COL_LEN_METHOD,
+        COL_HEAD_METHOD, COL_LEN_SIZE, COL_HEAD_SIZE, COL_LEN_PTR,
+        COL_HEAD_PTR, COL_HEAD_COMMENT);
 
-  size_t freedCount = 0, allocatedCount = 0;
-  for (size_t i = 0; i < hmlenu(gs_allocations_map); ++i) {
-    Allocation alloc = gs_allocations_map[i].value;
+    size_t freedCount = 0, allocatedCount = 0;
+    for (size_t i = 0; i < hmlenu(gs_allocations_map); ++i) {
+        Allocation alloc = gs_allocations_map[i].value;
 
-    allocatedCount += alloc.status == AS_allocated;
-    freedCount += alloc.status == AS_freed;
+        allocatedCount += alloc.status == AS_allocated;
+        freedCount += alloc.status == AS_freed;
 
-    void *ptr = gs_allocations_map[i].key;
+        void *ptr = gs_allocations_map[i].key;
 
-    fprintf(outStream, "%*zu | %*s | %*s | %*zu | %.*" PRIxPTR " | %s\n",
+        fprintf(outStream, "%*zu | %*s | %*s | %*zu | %.*" PRIxPTR " | %s\n",
             COL_LEN_INDEX, i, COL_LEN_STATUS,
             alloc.status == AS_freed ? STR_AS_FREED : STR_AS_ALLOCATED,
             COL_LEN_METHOD,
             alloc.method == AM_malloc ? STR_AM_MALLOC : STR_AM_CALLOC,
             COL_LEN_SIZE, alloc.size, COL_LEN_PTR, (intptr_t)ptr,
             alloc.comment);
-  }
-  fprintf(outStream, "%zu allocations (%zu currently allocated, %zu freed)\n",
-          hmlen(gs_allocations_map), allocatedCount, freedCount);
+    }
+    fprintf(outStream, "%zu allocations (%zu currently allocated, %zu freed)\n",
+        hmlen(gs_allocations_map), allocatedCount, freedCount);
 }
 
 // Redefine stdlib functions

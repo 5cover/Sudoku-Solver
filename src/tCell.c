@@ -38,11 +38,11 @@
 /// @remark This macro is equivalent to calling @c cell_candidateAt(cell,1) but
 /// offers better performance as it does not require the overhead of a function
 /// call.
-#define cell_get_first_candidate(cell, outVarName)                             \
-  tIntSize outVarName = 1;                                                     \
-  while (!cell_hasCandidate(cell, outVarName)) {                               \
-    outVarName++;                                                              \
-  }
+#define cell_get_first_candidate(cell, outVarName) \
+    tIntSize outVarName = 1;                       \
+    while (!cell_hasCandidate(cell, outVarName)) { \
+        outVarName++;                              \
+    }
 
 /// @brief Returns the nth candidate of a cell in the range [1 ; @ref SIZE].
 /// @param cell in: the cell
@@ -53,14 +53,14 @@ int cell_candidateAt(tCell const *cell, tIntSize n);
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 int cell_candidateAt(tCell const *cell, tIntSize n) {
-  assert(n <= cell_candidate_count(*cell));
+    assert(n <= cell_candidate_count(*cell));
 
-  tIntSize candidate = 0;
+    tIntSize candidate = 0;
 
-  while (n > 0) {
-    candidate++;
-    n -= cell->hasCandidate[candidate];
-  }
+    while (n > 0) {
+        candidate++;
+        n -= cell->hasCandidate[candidate];
+    }
 
-  return candidate;
+    return candidate;
 }
