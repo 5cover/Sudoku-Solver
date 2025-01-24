@@ -6,7 +6,7 @@ int_timingIterations = 200
 #todo: -fprofile-use
 
 clfags_lib = -lm
-cflags = -Wall -Wextra -fmacro-prefix-map=$(dir_src)=.
+cflags = -Wall -Wextra -fmacro-prefix-map=$(dir_src)=. $(cf)
 cflags_debug = $(cflags) -g -Og -fsanitize=address -fsanitize=signed-integer-overflow -fsanitize=leak
 cflags_release = $(cflags) -O0 -DNDEBUG # NDEBUG disables assertions
 
@@ -20,6 +20,7 @@ str_exeName = sudone
 file_grid = 'sample_grids/$(grid).sud'
 str_gridName = $(grid)
 
+main_src=$(dir_src)/main.c
 files_sources=$(wildcard $(dir_src)/*.c)
 files_headers=$(wildcard $(dir_src)/*.h)
 
@@ -28,14 +29,16 @@ file_exe_debug = $(dir_bin)/debug_$(str_exeName)
 file_exe_gprof = $(dir_bin)/gprof_$(str_exeName)
 file_exe_gcov = $(dir_src)/gcov_$(str_exeName)
 
+all: $(file_exe_debug)
+
 $(dir_bin):
 	mkdir -p $(dir_bin)
 
 $(file_exe_debug): $(dir_bin) $(files_sources) $(files_headers)
-	$(CC) $(cflags_debug) $(files_sources) -o $(file_exe_debug) $(clfags_lib)
+	$(CC) $(cflags_debug) $(main_src) -o $(file_exe_debug) $(clfags_lib)
 	
 $(file_exe_release): $(dir_bin) $(files_sources) $(files_headers)
-	$(CC) $(cflags_release) $(files_sources) -o $(file_exe_release)	$(clfags_lib)
+	$(CC) $(cflags_release) $(main_src) -o $(file_exe_release)	$(clfags_lib)
 
 # Simple run
 run: $(file_exe_release)
@@ -55,12 +58,12 @@ time: $(file_exe_release)
 
 # gprof function profiling run
 gprof: $(dir_bin) $(files_sources) $(files_headers)
-	$(CC) $(cflags_release) -pg $(files_sources) -o $(file_exe_gprof) $(clfags_lib)
+	$(CC) $(cflags_release) -pg $(main_src) -o $(file_exe_gprof) $(clfags_lib)
 	scripts/gprof.bash $(file_exe_gprof) $(file_grid) $(str_gridName) $(dir_profile)
 
 # gcov line-by-line profiling run
 gcov: $(files_sources) $(files_headers)
-	$(CC) $(cflags_release) --coverage -dumpbase '' $(files_sources) -o $(file_exe_gcov) $(clfags_lib)
+	$(CC) $(cflags_release) --coverage -dumpbase '' $(main_src) -o $(file_exe_gcov) $(clfags_lib)
 	scripts/gcov.bash $(file_exe_gcov) $(file_grid) $(str_gridName) $(dir_profile)
 	rm $(file_exe_gcov)
 

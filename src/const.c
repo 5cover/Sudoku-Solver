@@ -3,8 +3,7 @@
  * @author 5cover, Matteo-K
  */
 
-#ifndef CONST_H
-#define CONST_H
+#pragma once
 
 #define PROGRAM_NAME "sudone"
 
@@ -34,5 +33,3 @@
 #define DISPLAY_VERTICAL_LINE '|'
 /// @brief Character: grid display horizontal line
 #define DISPLAY_HORIZONTAL_LINE '-'
-
-#endif // CONST_H
