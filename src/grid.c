@@ -14,21 +14,22 @@
 #include "tCell.c"
 #include "utils.c"
 
-// Using macros to maximize the performance of these simple functions called
-// very frequently in the program.
+// Using macros to maximize the performance of these simple functions called very frequently in the program.
+
+#define grid_size(grid) ((grid).N * (grid).N)
 
 #define grid_cellAt(grid, row, column) \
-    (grid).cells[at2d((grid).SIZE, (row), (column))]
+    (grid).cells[at2d(grid_size(grid), (row), (column))]
 #define grid_cellAtPos(grid, pos) grid_cellAt(grid, pos.row, pos.column)
 /// @brief Defines whether a value is free or not at a position on the grid.
 #define grid_markValueFree(isFree, grid, row, column, value)                       \
     do {                                                                           \
-        assert((row) < (grid).SIZE);                                               \
-        assert((column) < (grid).SIZE);                                            \
-        assert((value) <= (grid).SIZE);                                            \
-        (grid)._isColumnFree[at2d((grid).SIZE + 1, (column), (value))] = (isFree); \
-        (grid)._isRowFree[at2d((grid).SIZE + 1, (row), (value))] = (isFree);       \
-        (grid)._isBlockFree[at3d((grid).N, (grid).SIZE + 1, (row) / (grid).N,      \
+        assert((row) < grid_size(grid));                                               \
+        assert((column) < grid_size(grid));                                            \
+        assert((value) <= grid_size(grid));                                            \
+        (grid)._isColumnFree[at2d(grid_size(grid) + 1, (column), (value))] = (isFree); \
+        (grid)._isRowFree[at2d(grid_size(grid) + 1, (row), (value))] = (isFree);       \
+        (grid)._isBlockFree[at3d((grid).N, grid_size(grid) + 1, (row) / (grid).N,      \
             (column) / (grid).N, (value))]                                         \
             = (isFree);                                                            \
     } while (0)
@@ -56,7 +57,7 @@
 // from the start of the resolution to the backtracking call. For this we use
 // the grid_markValueFree macro
 #define grid_possible(grid, row, column, value) \
-    ((grid)._isColumnFree[at2d((grid).SIZE + 1, (column), (value))] && (grid)._isRowFree[at2d((grid).SIZE + 1, (row), (value))] && (grid)._isBlockFree[at3d((grid).N, (grid).SIZE + 1, (row) / (grid).N, (column) / (grid).N, (value))])
+    ((grid)._isColumnFree[at2d(grid_size(grid) + 1, (column), (value))] && (grid)._isRowFree[at2d(grid_size(grid) + 1, (row), (value))] && (grid)._isBlockFree[at3d((grid).N, grid_size(grid) + 1, (row) / (grid).N, (column) / (grid).N, (value))])
 
 /// @brief Counts the number of possible values for a cell.
 /// @param grid in: the grid
@@ -66,7 +67,7 @@
 /// @return The amount of values for which @ref grid_possible returns @c true.
 #define grid_cellPossibleValuesCount(grid, row, column, outVarName) \
     tIntSize outVarName = 0;                                        \
-    for (tIntSize val = 1; val <= (grid).SIZE; val++) {             \
+    for (tIntSize val = 1; val <= grid_size(grid); val++) {             \
         outVarName += grid_possible((grid), (row), (column), val);  \
     }
 
@@ -170,7 +171,6 @@ void printMultipleTimes(char character, unsigned times, FILE *outStream);
 tGrid grid_create(tIntN const N) {
     return (tGrid) {
         .N = N,
-        .SIZE = N * N,
         .cells = NULL,
         ._isBlockFree = NULL,
         ._isColumnFree = NULL,
@@ -187,39 +187,39 @@ int grid_load(FILE *inStream, tGrid *g) {
 
     // As the .sud files only contain the grid values, we need a temporary integer
     // grid to store them.
-    uint32_t *gridValues = check_alloc(array2d_malloc(gridValues, g->SIZE, g->SIZE), "gridValues");
+    uint32_t *gridValues = check_alloc(array2d_malloc(gridValues, grid_size(*g), grid_size(*g)), "gridValues");
 
-    if (fread(gridValues, sizeof *gridValues, g->SIZE * g->SIZE, inStream) != g->SIZE * g->SIZE) fail_invalid_data();
+    if (fread(gridValues, sizeof *gridValues, grid_size(*g) * grid_size(*g), inStream) != grid_size(*g) * grid_size(*g)) fail_invalid_data();
 
     // Allocate and initialize all cells to 0 (candidates array is NULL, no value,
     // 0 candidates)
-    g->cells = check_alloc(array2d_calloc(g->cells, g->SIZE, g->SIZE),
+    g->cells = check_alloc(array2d_calloc(g->cells, grid_size(*g), grid_size(*g)),
         "grid cells array");
 
     // Allocate row, column and block arrays
-    g->_isColumnFree = check_alloc(array2d_malloc(g->_isColumnFree, g->SIZE, g->SIZE + 1),
+    g->_isColumnFree = check_alloc(array2d_malloc(g->_isColumnFree, grid_size(*g), grid_size(*g) + 1),
         "grid _isColumnFree array");
-    g->_isRowFree = check_alloc(array2d_malloc(g->_isRowFree, g->SIZE, g->SIZE + 1),
+    g->_isRowFree = check_alloc(array2d_malloc(g->_isRowFree, grid_size(*g), grid_size(*g) + 1),
         "grid _isRowFree array");
-    g->_isBlockFree = check_alloc(array3d_malloc(g->_isBlockFree, g->N, g->N, g->SIZE + 1),
+    g->_isBlockFree = check_alloc(array3d_malloc(g->_isBlockFree, g->N, g->N, grid_size(*g) + 1),
         "grid _isBlockFree array");
 
     // Initialize all rows, columns and blocks to free
-    memset(g->_isRowFree, true, sizeof(bool) * g->SIZE * (g->SIZE + 1));
-    memset(g->_isColumnFree, true, sizeof(bool) * g->SIZE * (g->SIZE + 1));
-    memset(g->_isBlockFree, true, sizeof(bool) * g->N * g->N * (g->SIZE + 1));
+    memset(g->_isRowFree, true, sizeof(bool) * grid_size(*g) * (grid_size(*g) + 1));
+    memset(g->_isColumnFree, true, sizeof(bool) * grid_size(*g) * (grid_size(*g) + 1));
+    memset(g->_isBlockFree, true, sizeof(bool) * g->N * g->N * (grid_size(*g) + 1));
 
     // Initialize cells and mark them as not free
-    for (tIntSize r = 0; r < g->SIZE; r++) {
-        for (tIntSize c = 0; c < g->SIZE; c++) {
-            tIntSize value = gridValues[at2d(g->SIZE, r, c)];
+    for (tIntSize r = 0; r < grid_size(*g); r++) {
+        for (tIntSize c = 0; c < grid_size(*g); c++) {
+            tIntSize value = gridValues[at2d(grid_size(*g), r, c)];
             tCell *cell = &grid_cellAt(*g, r, c);
 
-            cell->hasCandidate = check_alloc(array_calloc(cell->hasCandidate, g->SIZE + 1),
+            cell->hasCandidate = check_alloc(array_calloc(cell->hasCandidate, grid_size(*g) + 1),
                 "grid cell %d,%d hasCandidate array", r, c);
 
             if (value != 0) {
-                if (value > g->SIZE) fail_invalid_data();
+                if (value > grid_size(*g)) fail_invalid_data();
                 cell->_value = value;
                 grid_markValueFree(false, *g, r, c, value);
             }
@@ -227,13 +227,13 @@ int grid_load(FILE *inStream, tGrid *g) {
     }
 
     // Add candidates
-    for (tIntSize r = 0; r < g->SIZE; r++) {
-        for (tIntSize c = 0; c < g->SIZE; c++) {
+    for (tIntSize r = 0; r < grid_size(*g); r++) {
+        for (tIntSize c = 0; c < grid_size(*g); c++) {
             tCell *cell = &grid_cellAt(*g, r, c);
             // No need to compute the candidates of a cell that already has a value.
             if (!cell_hasValue(*cell)) {
                 // compute the cell's candidates
-                for (tIntSize candidate = 1; candidate <= g->SIZE; candidate++) {
+                for (tIntSize candidate = 1; candidate <= grid_size(*g); candidate++) {
                     bool possible = grid_possible(*g, r, c, candidate);
                     // add the candidate
                     cell->hasCandidate[candidate] = possible;
@@ -248,8 +248,8 @@ int grid_load(FILE *inStream, tGrid *g) {
 }
 
 void grid_free(tGrid *grid) {
-    for (tIntSize r = 0; r < grid->SIZE; r++) {
-        for (tIntSize c = 0; c < grid->SIZE; c++) {
+    for (tIntSize r = 0; r < grid_size(*grid); r++) {
+        for (tIntSize c = 0; c < grid_size(*grid); c++) {
             free(grid_cellAt(*grid, r, c).hasCandidate);
         }
     }
@@ -263,7 +263,7 @@ bool grid_cell_removeCandidate(tGrid *grid, tIntSize row, tIntSize column,
     tIntSize candidate) {
     tCell *cell = &grid_cellAt(*grid, row, column);
 
-    assert(1 <= candidate && candidate <= grid->SIZE);
+    assert(1 <= candidate && candidate <= grid_size(*grid));
 
     // If the cell has only one candidate remaining and it's the one we want to
     // remove, set it as the cell's value and remove it.
@@ -294,19 +294,19 @@ void grid_cell_provideValue(tGrid *grid, tIntSize row, tIntSize column,
 
     tCell *cell = &grid_cellAt(*grid, row, column);
 
-    assert(1 <= value && value <= grid->SIZE);
+    assert(1 <= value && value <= grid_size(*grid));
     assert(!cell_hasValue(*cell));
 
     cell->_value = value;
     cell->_candidateCount = 0;
-    memset(cell->hasCandidate, false, sizeof(bool) * grid->SIZE + 1);
+    memset(cell->hasCandidate, false, sizeof(bool) * grid_size(*grid) + 1);
     grid_markValueFree(false, *grid, row, column, value);
 }
 
 bool grid_removeCandidateFromRow(tGrid *grid, tIntSize row,
     tIntSize candidate) {
     bool progress = false;
-    for (tIntSize c = 0; c < grid->SIZE; c++) {
+    for (tIntSize c = 0; c < grid_size(*grid); c++) {
         progress |= grid_cell_removeCandidate(grid, row, c, candidate);
     }
     return progress;
@@ -315,7 +315,7 @@ bool grid_removeCandidateFromRow(tGrid *grid, tIntSize row,
 bool grid_removeCandidateFromColumn(tGrid *grid, tIntSize column,
     tIntSize candidate) {
     bool progress = false;
-    for (tIntSize r = 0; r < grid->SIZE; r++) {
+    for (tIntSize r = 0; r < grid_size(*grid); r++) {
         progress |= grid_cell_removeCandidate(grid, r, column, candidate);
     }
     return progress;
@@ -338,8 +338,8 @@ bool grid_removeCandidateFromBlock(tGrid *grid, tIntSize row, tIntSize column,
 }
 
 void grid_write(tGrid const *grid, FILE *outStream) {
-    for (tIntSize r = 0; r < grid->SIZE; r++) {
-        for (tIntSize c = 0; c < grid->SIZE; c++) {
+    for (tIntSize r = 0; r < grid_size(*grid); r++) {
+        for (tIntSize c = 0; c < grid_size(*grid); c++) {
             uint32_t value32 = grid_cellAt(*grid, r, c)._value;
             fwrite(&value32, sizeof(uint32_t), 1, outStream);
         }
@@ -348,7 +348,7 @@ void grid_write(tGrid const *grid, FILE *outStream) {
 
 void grid_print(tGrid const *grid, FILE *outStream) {
     // Print grid body
-    int padding = digitCount(grid->SIZE, 10);
+    int padding = digitCount(grid_size(*grid), 10);
 
     for (tIntSize block = 0; block < grid->N; block++) {
         printBlockSeparationLine(grid, padding, outStream);
